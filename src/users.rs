@@ -1,12 +1,45 @@
-use diesel::prelude::*;
-use actix_web::{get, HttpResponse, Responder};
 use crate::establish_connection;
-use crate::models::User;
+use crate::models::{LoginUser, NewUser, User};
 use crate::schema::users::dsl::*;
+use actix_web::web;
+use actix_web::{get, post, HttpResponse, Responder};
+use bcrypt::DEFAULT_COST;
+use diesel::prelude::*;
 
-#[get ("/users")]
+#[post("/login")]
+pub async fn login(sent_user: web::Json<LoginUser>) -> impl Responder {
+    let connection = &mut establish_connection();
+    let user = users
+        .filter(email.eq(sent_user.email.clone()))
+        .first::<User>(connection)
+        .expect("Error loading users");
+    if bcrypt::verify(sent_user.password.clone(), &user.password).unwrap() {
+        HttpResponse::Ok().body("Login successful")
+    } else {
+        HttpResponse::Ok().body("Login failed")
+    }
+}
+
+#[post("/users")]
+pub async fn create_user(sent_user: web::Json<NewUser>) -> impl Responder {
+    let connection = &mut establish_connection();
+    let new_user = NewUser {
+        name: sent_user.name.clone(),
+        email: sent_user.email.clone(),
+        password: bcrypt::hash(sent_user.password.clone(), DEFAULT_COST).unwrap(),
+    };
+
+    diesel::insert_into(users)
+        .values(&new_user)
+        .returning(User::as_returning())
+        .execute(connection)
+        .expect("Error saving new user");
+
+    HttpResponse::Ok().body("User created")
+}
+
+#[get("/users")]
 pub async fn get_users() -> impl Responder {
-
     let connection = &mut establish_connection();
     let results = users
         .select(User::as_select())

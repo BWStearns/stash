@@ -1,6 +1,7 @@
-use diesel::prelude::*;
 use chrono;
+use diesel::prelude::*;
 use diesel::sql_types::*;
+use serde::Deserialize;
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::users)]
@@ -13,4 +14,18 @@ pub struct User {
     pub created_at: chrono::NaiveDateTime,
     pub updated_at: chrono::NaiveDateTime,
     pub deleted_at: Option<chrono::NaiveDateTime>,
+}
+
+#[derive(Insertable, Deserialize)]
+#[diesel(table_name = crate::schema::users)]
+pub struct NewUser {
+    pub name: String,
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Deserialize)]
+pub struct LoginUser {
+    pub email: String,
+    pub password: String,
 }
