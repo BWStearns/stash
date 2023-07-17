@@ -1,0 +1,9 @@
+[database]
+url = "postgres://stash:stashpass@localhost:5432/stash"
+
+[host]
+host = "localhost"
+port = 8080
+
+[s3_storage]
+bucket = "stash-dev-bucket"

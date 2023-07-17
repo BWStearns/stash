@@ -11,6 +11,7 @@ use actix_web::{
 
 use aws_sdk_s3::Client;
 
+use stash::settings::Settings;
 use stash::users::{check_auth, create_user, get_users, login, SessionDetails};
 
 #[get("/")]
@@ -41,11 +42,42 @@ async fn manual_hello() -> impl Responder {
     HttpResponse::Ok().body("Hey there!")
 }
 
+async fn find_or_create_bucket(s3_client: &Client, bucket_name: &str) -> String {
+    let resp = s3_client
+        .list_buckets()
+        .send()
+        .await
+        .expect("Couldn't list buckets");
+    let bucket_names: Vec<String> = resp
+        .buckets
+        .unwrap_or_default()
+        .into_iter()
+        .map(|bucket| bucket.name.unwrap_or_default())
+        .collect();
+    if bucket_names.contains(&bucket_name.to_string()) {
+        bucket_name.to_string()
+    } else {
+        let resp = s3_client
+            .create_bucket()
+            .bucket(bucket_name)
+            .send()
+            .await
+            .expect("Couldn't create bucket");
+        resp.location.unwrap_or_default()
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let stash_config = Settings::new().expect("Couldn't load config");
     let aws_app_config = aws_config::from_env().region("us-east-1").load().await;
-    let s3_app_client = Data::new(Mutex::new(Client::new(&aws_app_config)));
+    let s3_client = Client::new(&aws_app_config);
+    let _bucket_name = find_or_create_bucket(&s3_client, &stash_config.s3_storage.bucket).await;
+    let s3_app_client = Data::new(Mutex::new(s3_client));
+    let _settings = Settings::new().expect("Couldn't load config");
     let secret_key = Key::generate();
+
+    // let bucket_name = env!()
 
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
