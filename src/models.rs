@@ -1,6 +1,6 @@
 use chrono;
 use diesel::prelude::*;
-use diesel::sql_types::*;
+
 use serde::Deserialize;
 
 #[derive(Queryable, Selectable)]

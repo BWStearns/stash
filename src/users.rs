@@ -21,17 +21,14 @@ pub fn check_auth(session: &Session) -> Result<u32, actix_web::Error> {
 }
 
 #[post("/login")]
-pub async fn login(
-    session: Session,
-    sent_user: web::Json<LoginUser>
-) -> impl Responder {
+pub async fn login(session: Session, sent_user: web::Json<LoginUser>) -> impl Responder {
     let connection = &mut establish_connection();
     let user = users
         .filter(email.eq(sent_user.email.clone()))
         .first::<User>(connection)
         .expect("Error loading users");
     if bcrypt::verify(sent_user.password.clone(), &user.password).unwrap() {
-        let _ = session.insert("user_id", &user.id);
+        let _ = session.insert("user_id", user.id);
         session.renew();
         HttpResponse::Ok().body("Login successful")
     } else {
